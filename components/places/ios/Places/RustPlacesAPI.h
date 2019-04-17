@@ -122,12 +122,12 @@ PlacesRustBuffer places_get_visit_infos(PlacesConnectionHandle handle,
                                         int32_t exclude_types,
                                         PlacesRustError *_Nonnull out_err);
 
-void sync15_history_sync(PlacesConnectionHandle handle,
-                         char const *_Nonnull key_id,
-                         char const *_Nonnull access_token,
-                         char const *_Nonnull sync_key,
-                         char const *_Nonnull tokenserver_url,
-                         PlacesRustError *_Nonnull out_err);
+PlacesRustBuffer sync15_history_sync(PlacesConnectionHandle handle,
+                                     char const *_Nonnull key_id,
+                                     char const *_Nonnull access_token,
+                                     char const *_Nonnull sync_key,
+                                     char const *_Nonnull tokenserver_url,
+                                     PlacesRustError *_Nonnull out_err);
 
 void sync15_bookmarks_sync(PlacesConnectionHandle handle,
                            char const *_Nonnull key_id,
