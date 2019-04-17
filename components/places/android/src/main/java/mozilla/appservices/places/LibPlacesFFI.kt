@@ -175,6 +175,7 @@ internal interface LibPlacesFFI : Library {
         error: RustError.ByReference
     ): Long
 
+    // Returns a JSON string containing a sync ping.
     fun sync15_history_sync(
         handle: PlacesConnectionHandle,
         key_id: String,
@@ -182,8 +183,9 @@ internal interface LibPlacesFFI : Library {
         sync_key: String,
         tokenserver_url: String,
         out_err: RustError.ByReference
-    ): RustBuffer.ByValue
+    ): Pointer?
 
+    // Returns a JSON string containing a sync ping.
     fun sync15_bookmarks_sync(
         handle: PlacesConnectionHandle,
         key_id: String,
@@ -191,7 +193,7 @@ internal interface LibPlacesFFI : Library {
         sync_key: String,
         tokenserver_url: String,
         out_err: RustError.ByReference
-    )
+    ): Pointer?
 
     fun bookmarks_get_all_with_url(
         handle: PlacesConnectionHandle,
