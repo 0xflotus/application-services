@@ -1,6 +1,21 @@
 version: 2.1
 
 commands:
+  setup-sccache:
+    steps:
+      - run:
+          name: Install sccache
+          command: |
+            cargo install sccache
+            echo 'export "RUSTC_WRAPPER"="sccache"' >> $BASH_ENV
+            echo 'export "SCCACHE_IDLE_TIMEOUT"="1200"' >> $BASH_ENV
+            echo 'export "SCCACHE_CACHE_SIZE"="3G"' >> $BASH_ENV
+            echo 'export "SCCACHE_ERROR_LOG"="/tmp/sccache.log"' >> $BASH_ENV
+            echo 'export "RUST_LOG"="sccache=info"' >> $BASH_ENV
+            sccache --version
+      - store_artifacts:
+          path: /tmp/sccache.log
+          destination: logs/sccache.log
   install-xcpretty:
     steps:
       - run:
@@ -86,6 +101,7 @@ commands:
       - build-desktop-libs
       - setup-rust-toolchain:
           rust-version: <<parameters.rust-version>>
+      - setup-sccache
       - install-clang
       - run: |
           echo 'export NSS_DIR=$(pwd)/libs/desktop/linux-x86-64/nss' >> $BASH_ENV
@@ -141,6 +157,18 @@ commands:
       - run:
           name: Build and Run Benchmarks
           command: cargo bench --all
+  restore-sccache-linux-stable:
+    steps:
+      - restore_cache:
+          name: Restore sccache cache
+          key: sccache-cache-linux-stable-{{ arch }}
+  save-sccache-linux-stable:
+    steps:
+      - save_cache:
+          name: Save sccache cache
+          key: sccache-cache-linux-stable-{{ arch }}-{{ epoch }}
+          paths:
+            - "~/.cache/sccache"
 
 jobs:
   Check Swift formatting:
@@ -179,24 +207,38 @@ jobs:
     # We have to use a machine with more RAM for tests so we don't run out of memory.
     resource_class: large
     steps:
+      - restore-sccache-linux-stable
       - rust-tests
+      - save-sccache-linux-stable
   Rust tests - beta:
     docker:
       - image: circleci/rust:latest
     resource_class: large
     steps:
+      - restore_cache:
+          name: Restore sccache cache
+          key: sccache-cache-linux-beta-{{ arch }}
       - rust-tests:
           rust-version: "beta"
+      - save_cache:
+          name: Save sccache cache
+          key: sccache-cache-linux-beta-{{ arch }}-{{ epoch }}
+          paths:
+            - "~/.cache/sccache"
   Sync integration tests:
     docker:
       - image: circleci/rust:latest-browsers
     steps:
+      - restore-sccache-linux-stable
       - sync-tests
+      - save-sccache-linux-stable
   Rust benchmarks:
     docker:
       - image: circleci/rust:latest
     steps:
+      - restore-sccache-linux-stable
       - bench-all
+      - save-sccache-linux-stable
   iOS build and test:
     macos:
       xcode: "10.1.0"
@@ -204,13 +246,12 @@ jobs:
       - install-rust
       - setup-rust-toolchain
       - checkout
-      - restore_cache:
-          name: Restore Rust cache
-          keys:
-            - rust-cache-{{ arch }}-{{ checksum "Cargo.lock" }}
-            - rust-cache-{{ arch }}
+      - setup-sccache
       - build-libs:
           platform: ios
+      - restore_cache:
+          name: Restore sccache cache
+          key: sccache-cache-macos-{{ arch }}
       - run:
           name: Setup build environment
           command: |
@@ -235,14 +276,14 @@ jobs:
           path: raw_xcodebuild.log
           destination: logs/raw_xcodebuild.log
       - save_cache:
-          name: Save Rust cache
+          name: Save sccache cache
           # We use {{ epoch }} to always upload a fresh cache:
           # Of course, restore_cache will not find this exact key,
           # but it will fall back to the closest key (aka the most recent).
           # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
-          key: rust-cache-{{ arch }}-{{ checksum "Cargo.lock" }}-{{ epoch }}
+          key: sccache-cache-macos-{{ arch }}-{{ epoch }}
           paths:
-            - "./target"
+            - "~/Library/Caches/Mozilla.sccache"
       - run:
           name: "Create Carthage bin-only project specification"
           command: |
